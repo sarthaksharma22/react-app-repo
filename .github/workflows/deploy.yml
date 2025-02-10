@@ -3,7 +3,7 @@ name: Build and Deploy to AWS ECR & S3
 on:
   push:
     branches:
-      - main  # Change this if your branch is different
+      - main  # Trigger on main branch commits
 
 jobs:
   build-and-deploy:
@@ -18,7 +18,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # Change to your AWS region
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to AWS ECR
         id: login-ecr
@@ -39,4 +39,4 @@ jobs:
 
       - name: Upload Docker Image to S3
         run: |
-          aws s3 cp my-react-app.tar s3://my-s3-bucket-name/my-react-app.tar
+          aws s3 cp my-react-app.tar s3://${{ secrets.S3_BUCKET_NAME }}/my-react-app.tar
