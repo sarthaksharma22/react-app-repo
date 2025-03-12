@@ -1,42 +1,34 @@
-name: Build and Deploy to AWS ECR & S3
+name: Push Docker Image to OCI Container Registry
 
 on:
   push:
     branches:
-      - main  # Trigger on main branch commits
+      - main
+      - develop
+  workflow_dispatch: # Allows manual trigger
 
 jobs:
-  build-and-deploy:
+  push_to_ocir:
+    name: Build & Push Image to OCIR
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Login to AWS ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build and Tag Docker Image
+      - name: Login to OCI Container Registry (OCIR)
         run: |
-          docker build -t my-react-app .
-          docker tag my-react-app:latest ${{ secrets.AWS_ECR_REPO }}:latest
+          echo "${{ secrets.OCI_AUTH_TOKEN }}" | docker login ${{ secrets.OCI_REGION }}.ocir.io -u "${{ secrets.OCI_USER }}" --password-stdin
 
-      - name: Push Docker Image to ECR
+      - name: Build Docker Image
         run: |
-          docker push ${{ secrets.AWS_ECR_REPO }}:latest
+          docker build -t ${{ secrets.OCI_REPO_NAME }}:latest .
 
-      - name: Save Docker Image as .tar File
+      - name: Tag Docker Image for OCIR
         run: |
-          docker save -o my-react-app.tar ${{ secrets.AWS_ECR_REPO }}:latest
+          docker tag ${{ secrets.OCI_REPO_NAME }}:latest \
+          ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY }}/${{ secrets.OCI_REPO_NAME }}:latest
 
-      - name: Upload Docker Image to S3
+      - name: Push Image to OCIR
         run: |
-          aws s3 cp my-react-app.tar s3://${{ secrets.S3_BUCKET_NAME }}/my-react-app.tar
+          docker push ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY }}/${{ secrets.OCI_REPO_NAME }}:latest
