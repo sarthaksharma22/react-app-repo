@@ -55,7 +55,7 @@ jobs:
         run: cat trivy-report.txt   # Print Trivy scan report to GitHub logs
 
       - name: Upload Trivy Scan Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # ✅ Updated version
         with:
           name: Trivy-Vulnerability-Report
           path: trivy-report.txt
