@@ -17,24 +17,27 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Log in to Docker Hub (Optional)
+        if: env.DOCKERHUB_USERNAME != ''
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build Docker Image
+        run: |
+          docker build -t react-app:latest .
+
       - name: Set up Trivy
         uses: aquasecurity/setup-trivy@v0.2.2
         with:
           version: v0.57.1
-          cache: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-          path: $HOME/.local/bin
 
       - name: Cache Trivy DB
         uses: actions/cache@v4
         with:
           path: ~/.cache/trivy
           key: cache-trivy-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            cache-trivy-${{ runner.os }}-
+          restore-keys: cache-trivy-${{ runner.os }}-
 
       - name: Scan Docker Image with Trivy
-        id: trivy
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: react-app:latest
@@ -45,12 +48,7 @@ jobs:
           vuln-type: os,library
           scanners: vuln,secret,misconfig
           scan-type: image
-          scan-ref: .
           cache-dir: ~/.cache/trivy
-          list-all-pkgs: false
-          version: v0.57.1
-          cache: true
-          skip-setup-trivy: false
 
       - name: Handle Scan Failure
         if: failure()
