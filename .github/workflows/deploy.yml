@@ -1,34 +1,40 @@
-name: Push Docker Image to OCI Container Registry
+name: React App - Build & Scan with Trivy
 
 on:
   push:
     branches:
       - main
       - develop
-  workflow_dispatch: # Allows manual trigger
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: # Allows manual execution
 
 jobs:
-  push_to_ocir:
-    name: Build & Push Image to OCIR
+  build-and-scan:
+    name: Build & Scan Docker Image
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Login to OCI Container Registry (OCIR)
+      - name: Install Dependencies & Build React App
         run: |
-          echo "${{ secrets.OCI_AUTH_TOKEN }}" | docker login ${{ secrets.OCI_REGION }}.ocir.io -u "${{ secrets.OCI_USER }}" --password-stdin
+          npm install
+          npm run build
 
       - name: Build Docker Image
         run: |
-          docker build -t ${{ secrets.OCI_REPO_NAME }}:latest .
+          docker build -t react-app:latest .
 
-      - name: Tag Docker Image for OCIR
-        run: |
-          docker tag ${{ secrets.OCI_REPO_NAME }}:latest \
-          ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY }}/${{ secrets.OCI_REPO_NAME }}:latest
-
-      - name: Push Image to OCIR
-        run: |
-          docker push ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY }}/${{ secrets.OCI_REPO_NAME }}:latest
+      - name: Scan Docker Image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'react-app:latest'
+          format: 'table'
+          exit-code: '1'  # Fail workflow if vulnerabilities are found
+          severity: 'CRITICAL,HIGH' # Only fail for HIGH & CRITICAL issues
+          ignore-unfixed: true  # Ignore vulnerabilities without fixes
+          vuln-type: 'os,library'  # Scan both OS & app dependencies
+          scanners: 'vuln,secret,config'  # Scan for vulnerabilities, secrets, misconfigurations
