@@ -42,6 +42,7 @@ jobs:
         with:
           image-ref: react-app:latest
           format: table
+          output: trivy-report.txt   # Save Trivy report to a file
           exit-code: 1
           severity: CRITICAL,HIGH
           ignore-unfixed: true
@@ -49,6 +50,15 @@ jobs:
           scanners: vuln,secret,misconfig
           scan-type: image
           cache-dir: ~/.cache/trivy
+
+      - name: Display Trivy Scan Report
+        run: cat trivy-report.txt   # Print Trivy scan report to GitHub logs
+
+      - name: Upload Trivy Scan Report
+        uses: actions/upload-artifact@v4  # ✅ Updated version
+        with:
+          name: Trivy-Vulnerability-Report
+          path: trivy-report.txt
 
       - name: Handle Scan Failure
         if: failure()
